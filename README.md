@@ -109,3 +109,17 @@ Use **nested globals** for compact adjacency; keep edge metadata in a side globa
 2. Whether to keep the `→` edge-ID string as a first-class key for BM25-style search (old c3fst) or only as a join key.
 3. Host: U01 YottaDB r2.06 (already running) vs dedicated region/UCI.
 4. Disk budget: nested adjacency should land far below 26 KB/article — measure on first 1M.
+
+## Test isolation
+
+Loaders take a `Schema` of global names. Tests call `Schema().with_suffix("TEST")`
+and pass `schema=` — never assign module constants or `delete_tree` production globals.
+
+## Load rates (U01, 2026-10-06)
+
+| Load | Rate |
+|------|------|
+| MeSH + indexes | ~43 desc/s |
+| PubMed 1M | ~3.2k arts/s · 9.3M edges · dangling=0 |
+| SerFile (per-edge TP) | ~25 rec/s |
+| CatPlus (50/rec TP batch) | ~1.2k rec/s |
