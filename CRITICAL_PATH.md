@@ -10,6 +10,7 @@
 | **4** | ISSN / NCT / DOI / gene / drug links | vocabulary parity with old `load-links.py` |
 | **5** | QA invariants + `$ORDER` related-walk | verify-loaded; Python API `related(mesh_ui)` |
 
-**Next:** Wave 1 — `emit_edge` writes `^GRAPH` + `^GRAPHREV` in one `yottadb.tp`.
+**Next:** Wave 4–5 (other links + QA `related()` walk) — after ydb-py GUI per master path.  
+**Done:** Wave 1 `emit_edge`; Wave 2 `^MESH` 31,110 UIs / 65,360 trees / 633,885 quals; Wave 3 1M PubMed smoke (1,000,000 arts / 9,310,029 `has_mesh` edges / dangling=0) (2026-10-05).
 
 **Do not:** one-doc-per-edge BM25 index unless search requires it; start author pass 2 automatically; mix `has_mesh` orientations.

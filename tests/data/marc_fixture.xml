@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<marc:collection xmlns:marc="http://www.loc.gov/MARC21/slim">
+<marc:record>
+  <marc:leader>00735cas a2200277   4500</marc:leader>
+  <marc:controlfield tag="001">S001</marc:controlfield>
+  <marc:datafield tag="022" ind1=" " ind2=" ">
+    <marc:subfield code="a">0413-3951</marc:subfield>
+  </marc:datafield>
+  <marc:datafield tag="245" ind1="0" ind2="0">
+    <marc:subfield code="a">Collana di studi pediatrici.</marc:subfield>
+  </marc:datafield>
+  <marc:datafield tag="650" ind1=" " ind2="2">
+    <marc:subfield code="a">Calcimycin</marc:subfield>
+  </marc:datafield>
+</marc:record>
+<marc:record>
+  <marc:controlfield tag="001">C002</marc:controlfield>
+  <marc:datafield tag="245" ind1="0" ind2="0">
+    <marc:subfield code="a">A manual of personal hygiene :</marc:subfield>
+    <marc:subfield code="b">proper living /</marc:subfield>
+  </marc:datafield>
+  <marc:datafield tag="650" ind1=" " ind2="2">
+    <marc:subfield code="a">Calcimycin</marc:subfield>
+  </marc:datafield>
+  <marc:datafield tag="650" ind1=" " ind2="2">
+    <marc:subfield code="a">Not In Thesaurus</marc:subfield>
+  </marc:datafield>
+</marc:record>
+</marc:collection>

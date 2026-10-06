@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2025//EN" "https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_250101.dtd">
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation Status="MEDLINE" IndexingMethod="Manual" Owner="NLM">
+      <PMID Version="1">12200706</PMID>
+      <Article PubModel="Print">
+        <Journal>
+          <ISSN IssnType="Print">0887-6924</ISSN>
+          <Title>Leukemia</Title>
+        </Journal>
+        <ArticleTitle>Differential bone marrow aspirate DNA yields from commercial extraction kits.</ArticleTitle>
+        <Language>eng</Language>
+      </Article>
+      <MeshHeadingList>
+        <MeshHeading>
+          <DescriptorName UI="D001707" MajorTopicYN="Y">Biopsy, Needle</DescriptorName>
+        </MeshHeading>
+        <MeshHeading>
+          <DescriptorName UI="D004247" MajorTopicYN="N">DNA</DescriptorName>
+          <QualifierName UI="Q000302" MajorTopicYN="Y">isolation &amp; purification</QualifierName>
+        </MeshHeading>
+        <MeshHeading>
+          <DescriptorName UI="D999999" MajorTopicYN="N">Not In Thesaurus</DescriptorName>
+        </MeshHeading>
+      </MeshHeadingList>
+    </MedlineCitation>
+  </PubmedArticle>
+  <PubmedArticle>
+    <MedlineCitation Status="MEDLINE" Owner="NLM">
+      <PMID Version="1">30000001</PMID>
+      <Article PubModel="Print">
+        <Journal>
+          <Title>Fixture Journal</Title>
+        </Journal>
+        <ArticleTitle>Second article with no mesh headings.</ArticleTitle>
+      </Article>
+    </MedlineCitation>
+  </PubmedArticle>
+</PubmedArticleSet>

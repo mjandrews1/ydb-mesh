@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!DOCTYPE DescriptorRecordSet SYSTEM "https://www.nlm.nih.gov/databases/dtd/nlmdescriptorrecordset_20260101.dtd">
+<DescriptorRecordSet LanguageCode = "eng">
+<DescriptorRecord DescriptorClass = "1">
+  <DescriptorUI>D000001</DescriptorUI>
+  <DescriptorName>
+   <String>Calcimycin</String>
+  </DescriptorName>
+  <AllowableQualifiersList>
+   <AllowableQualifier>
+    <QualifierReferredTo>
+     <QualifierUI>Q000008</QualifierUI>
+      <QualifierName>
+      <String>administration &amp; dosage</String>
+      </QualifierName>
+    </QualifierReferredTo>
+    <Abbreviation>AD</Abbreviation>
+   </AllowableQualifier>
+   <AllowableQualifier>
+    <QualifierReferredTo>
+     <QualifierUI>Q000009</QualifierUI>
+      <QualifierName>
+      <String>adverse effects</String>
+      </QualifierName>
+    </QualifierReferredTo>
+    <Abbreviation>AE</Abbreviation>
+   </AllowableQualifier>
+  </AllowableQualifiersList>
+  <TreeNumberList>
+   <TreeNumber>D02.355.291.933.125</TreeNumber>
+   <TreeNumber>D03.633.100.221.173</TreeNumber>
+  </TreeNumberList>
+  <ConceptList>
+   <Concept PreferredConceptYN="Y">
+    <ConceptUI>M0000001</ConceptUI>
+    <ConceptName>
+     <String>Calcimycin</String>
+    </ConceptName>
+    <ConceptRelationList>
+     <ConceptRelation RelationName="NRW">
+      <Concept1UI>M0000001</Concept1UI>
+      <Concept2UI>M0353609</Concept2UI>
+     </ConceptRelation>
+    </ConceptRelationList>
+   </Concept>
+  </ConceptList>
+ </DescriptorRecord>
+<DescriptorRecord DescriptorClass = "2">
+  <DescriptorUI>D000123</DescriptorUI>
+  <DescriptorName>
+   <String>Physicians &amp; Nurses</String>
+  </DescriptorName>
+  <ScopeNote>Roles involving care &amp; treatment &#x2014; see also.</ScopeNote>
+  <TreeNumberList>
+   <TreeNumber>N04.452.677</TreeNumber>
+  </TreeNumberList>
+ </DescriptorRecord>
+<DescriptorRecord DescriptorClass = "1">
+  <DescriptorUI>D000999</DescriptorUI>
+  <DescriptorName>
+   <String>Parent Chemical</String>
+  </DescriptorName>
+  <TreeNumberList>
+   <TreeNumber>D02.355.291.933</TreeNumber>
+   <TreeNumber>D03.633.100.221</TreeNumber>
+  </TreeNumberList>
+ </DescriptorRecord>
+<DescriptorRecord DescriptorClass = "1">
+  <DescriptorUI>D000456</DescriptorUI>
+  <DescriptorName>
+   <String>1,2-Dimethylhydrazine</String>
+  </DescriptorName>
+  <TreeNumberList>
+   <TreeNumber>D02.455.326.146</TreeNumber>
+   <TreeNumber>D02.654.222</TreeNumber>
+   <TreeNumber>C04.557.470</TreeNumber>
+  </TreeNumberList>
+ </DescriptorRecord>
+</DescriptorRecordSet>
