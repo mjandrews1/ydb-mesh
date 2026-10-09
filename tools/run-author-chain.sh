@@ -1,7 +1,6 @@
 #!/bin/bash
 # Wait for PubMed author-pass to finish, then run MARC author-pass (P3.5b).
 # Usage: nohup ./run-author-chain.sh > /home/mark/ydb-mesh/author-chain.log 2>&1 &
-set -u
 source /usr/local/etc/ydb_env_set
 export LD_LIBRARY_PATH=/usr/local/lib/yottadb/r206/plugin/o/utf8:${LD_LIBRARY_PATH:-}
 export PYTHONPATH=/home/mark/ydb-mesh
@@ -25,3 +24,4 @@ echo "CHAIN MARC serfile … $(date -Is)"
   --kind serline | tee -a /home/mark/ydb-mesh/author-marc-serfile.log
 
 echo "CHAIN DONE $(date -Is)"
+
