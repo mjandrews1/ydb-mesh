@@ -50,14 +50,18 @@ def related(
     rel: Optional[str] = None,
     to_type: Optional[str] = None,
     schema: Optional[Schema] = None,
+    limit: int = 1000,
 ) -> Iterator[tuple]:
-    """Yield (rel, to_type, to_id) for edges out of a node."""
+    """Yield (rel, to_type, to_id) for edges out of a node (capped)."""
     import yottadb
     from yottadb import YDBError, YDBNodeEnd
 
     sch = schema or DEFAULT
+    n = 0
     try:
         for node in yottadb.nodes(sch.graph, (from_type, from_id)):
+            if n >= limit:
+                return
             if not isinstance(node, tuple) or len(node) < 5:
                 continue
             r, tt, tid = node[2], node[3], node[4]
@@ -65,6 +69,7 @@ def related(
                 continue
             if to_type and tt != to_type:
                 continue
+            n += 1
             yield (r, tt, tid)
     except YDBNodeEnd:
         return

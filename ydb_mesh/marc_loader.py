@@ -144,10 +144,14 @@ def load_marc(
     if buf:
         write_batch(buf)
 
-    yottadb.set(sch.marcstat, (kind, "records"), value=str(stats["records"]).encode())
-    yottadb.set(sch.marcstat, (kind, "subjects"), value=str(stats["subjects"]).encode())
-    yottadb.set(sch.marcstat, (kind, "matched"), value=str(stats["matched"]).encode())
-    yottadb.set(sch.marcstat, (kind, "dangling"), value=str(stats["dangling"]).encode())
+    from .schema import bump_stat
+
+    bump_stat(sch, sch.marcstat, {
+        "records": stats["records"],
+        "subjects": stats["subjects"],
+        "matched": stats["matched"],
+        "dangling": stats["dangling"],
+    }, prefix=(kind,))
     return stats
 
 

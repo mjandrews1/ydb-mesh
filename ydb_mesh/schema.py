@@ -24,6 +24,16 @@ class Schema:
     serline: str = "^SERLINE"
     catline: str = "^CATLINE"
     marcstat: str = "^MARCSTAT"
+    nct: str = "^NCT"
+    nctstat: str = "^NCTSTAT"
+    gene: str = "^GENE"
+    var: str = "^VAR"
+    varstat: str = "^VARSTAT"
+    product: str = "^PRODUCT"
+    drugstat: str = "^DRUGSTAT"
+    qual: str = "^QUAL"
+    qualstat: str = "^QUALSTAT"
+    linkstat: str = "^LINKSTAT"
 
     def with_suffix(self, suffix: str) -> "Schema":
         """Return a copy whose every global name is suffixed (test isolation)."""
@@ -38,3 +48,22 @@ class Schema:
 
 
 DEFAULT = Schema()
+
+
+def bump_stat(schema: Schema, stat_global: str, keys: dict, prefix: tuple = ()) -> None:
+    """Accumulate STAT counters across multi-file loads.
+
+    key path is prefix + (key,). Use prefix=("serline",) for ^MARCSTAT.
+    """
+    import yottadb
+
+    for key, delta in keys.items():
+        path = prefix + (key,)
+        cur = 0
+        try:
+            raw = yottadb.get(stat_global, path)
+            if raw:
+                cur = int(raw)
+        except Exception:
+            cur = 0
+        yottadb.set(stat_global, path, value=str(cur + delta).encode())
