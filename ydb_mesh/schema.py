@@ -34,6 +34,8 @@ class Schema:
     qual: str = "^QUAL"
     qualstat: str = "^QUALSTAT"
     linkstat: str = "^LINKSTAT"
+    author: str = "^AUTHOR"
+    authorstat: str = "^AUTHORSTAT"
 
     def with_suffix(self, suffix: str) -> "Schema":
         """Return a copy whose every global name is suffixed (test isolation)."""
