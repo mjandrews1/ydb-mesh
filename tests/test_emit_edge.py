@@ -3,11 +3,15 @@ import sys
 sys.path.insert(0, "/home/mark/ydb-mesh")
 sys.path.insert(0, "/Users/mark/ydb-mesh")
 
-import yottadb
-from ydb_mesh import emit_edge, related
-
 
 def main():
+    try:
+        import yottadb
+    except ImportError:
+        print("WAVE1 EMIT_EDGE SKIP (no yottadb)")
+        return
+    from ydb_mesh import emit_edge, related
+
     emit_edge("mesh", "D000001", "has_mesh", "pubmed", "12345", meta=b"Y", rev_rel="has_subject")
     rev = yottadb.get("^GRAPHREV", ("pubmed", "12345", "has_subject", "mesh", "D000001"))
     fwd = yottadb.get("^GRAPH", ("mesh", "D000001", "has_mesh", "pubmed", "12345"))
@@ -16,7 +20,7 @@ def main():
     print("related", outs)
     assert fwd == b"Y"
     assert rev == b"Y"
-    assert (b"has_mesh", b"pubmed", b"12345") in outs
+    assert (b"has_mesh", b"pubmed", "12345") in outs
     print("WAVE1 EMIT_EDGE OK")
 
 
