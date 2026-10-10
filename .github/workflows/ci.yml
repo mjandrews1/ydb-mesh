@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Parser / unit tests
+        # yottadb-dependent cases self-skip without the Simple API.
+        run: |
+          set -euo pipefail
+          fail=0
+          for t in tests/test_*.py; do
+            echo "==== $t ===="
+            if python3 "$t"; then
+              echo "PASS $t"
+            else
+              echo "FAIL $t"
+              fail=1
+            fi
+          done
+          exit "$fail"
