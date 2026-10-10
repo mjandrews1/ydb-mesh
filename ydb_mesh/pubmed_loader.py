@@ -2,6 +2,8 @@
 
 Schema:
     ^PUBMED(pmid) = article title
+    ^PUBMED(pmid,"ab") = abstract (structured labels kept)
+    ^PUBMED(pmid,"issn") = journal ISSN
     ^PUBMED(pmid,"mesh",ui) = major-topic flag (Y/N)
 
 Edges (both directions, one tp inside emit_edge):
@@ -37,6 +39,7 @@ class MeshHeading:
 class Article:
     pmid: str
     title: str = ""
+    abstract: str = ""
     issn: str = ""
     mesh: list[MeshHeading] = field(default_factory=list)
 
@@ -44,6 +47,21 @@ class Article:
 def _text(elem: Optional[ET.Element], path: str) -> str:
     raw = elem.findtext(path) if elem is not None else None
     return unescape_entities(raw).strip() if raw else ""
+
+
+def _parse_abstract(elem: ET.Element) -> str:
+    """Concatenate AbstractText sections (structured abstracts keep labels)."""
+    node = elem.find("MedlineCitation/Article/Abstract")
+    if node is None:
+        return ""
+    parts = []
+    for at in node.findall("AbstractText"):
+        label = (at.get("Label") or "").strip()
+        body = unescape_entities("".join(at.itertext())).strip()
+        if not body:
+            continue
+        parts.append(f"{label}: {body}" if label else body)
+    return "\n".join(parts)
 
 
 def _parse_mesh_heading(h: ET.Element) -> Optional[MeshHeading]:
@@ -68,13 +86,14 @@ def _parse_article(elem: ET.Element) -> Optional[Article]:
     if not pmid:
         return None
     title = _text(elem, "MedlineCitation/Article/ArticleTitle")
+    abstract = _parse_abstract(elem)
     issn = _text(elem, "MedlineCitation/Article/Journal/ISSN")
     mesh: list[MeshHeading] = []
     for h in elem.findall("MedlineCitation/MeshHeadingList/MeshHeading"):
         mh = _parse_mesh_heading(h)
         if mh:
             mesh.append(mh)
-    return Article(pmid=pmid, title=title, issn=issn, mesh=mesh)
+    return Article(pmid=pmid, title=title, abstract=abstract, issn=issn, mesh=mesh)
 
 
 def _open_xml(path: str) -> BinaryIO:
@@ -103,6 +122,10 @@ def _write_batch(
     def cb(*_a, **_k):
         for art in batch:
             yottadb.set(sch.pubmed, (art.pmid,), value=art.title.encode("utf-8"))
+            if art.abstract:
+                yottadb.set(
+                    sch.pubmed, (art.pmid, "ab"), value=art.abstract.encode("utf-8")
+                )
             if art.issn:
                 yottadb.set(
                     sch.pubmed, (art.pmid, "issn"), value=art.issn.encode("utf-8")

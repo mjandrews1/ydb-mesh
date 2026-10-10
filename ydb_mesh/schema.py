@@ -36,6 +36,11 @@ class Schema:
     linkstat: str = "^LINKSTAT"
     author: str = "^AUTHOR"
     authorstat: str = "^AUTHORSTAT"
+    # 2026-10-10: abstracts + inverted term index + preprints
+    pterm: str = "^PTERM"
+    ptermstat: str = "^PTERMSTAT"
+    preprint: str = "^PREPRINT"
+    preprintstat: str = "^PREPRINTSTAT"
 
     def with_suffix(self, suffix: str) -> "Schema":
         """Return a copy whose every global name is suffixed (test isolation)."""
