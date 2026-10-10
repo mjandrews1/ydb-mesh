@@ -76,7 +76,9 @@ def iter_api(src: str, date_from: str, date_to: str, pause: float = 0.5) -> Iter
                 pmid=(rec.get("pmid") or "").strip(),
             )
         cursor += len(coll)
-        if len(coll) < 100:
+        # medRxiv/bioRxiv page size is typically 30; keep paging until empty.
+        total = (data.get("messages") or [{}])[0].get("total")
+        if total is not None and cursor >= int(total):
             break
         time.sleep(pause)
 
