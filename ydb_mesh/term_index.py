@@ -76,28 +76,23 @@ def _write_pairs(
     values: dict[tuple[str, str], int],
     chunk: int = 200,
 ) -> int:
-    """Write (key, pmid)->int in small TPs (avoid TRANS2BIG)."""
+    """Write (key, pmid)->int.
+
+    Bulk index rebuild uses direct SETs (no TP). One giant TP hits
+    %YDB-E-TRANS2BIG; crash mid-build is recoverable by rerun. See ydb-mesh#12.
+    """
     import yottadb
 
-    n = 0
-    for i in range(0, len(pairs), chunk):
-        part = pairs[i : i + chunk]
-
-        def cb(*_a, **_k):
-            for key, pmid in part:
-                yottadb.set(global_name, (key, pmid), value=str(values[(key, pmid)]).encode())
-            return yottadb.YDB_OK
-
-        yottadb.tp(cb)
-        n += len(part)
-    return n
+    for key, pmid in pairs:
+        yottadb.set(global_name, (key, pmid), value=str(values[(key, pmid)]).encode())
+    return len(pairs)
 
 
 def build(
     schema: Schema = DEFAULT,
     limit: Optional[int] = None,
     pmids: Optional[Iterable[str]] = None,
-    batch: int = 50,
+    batch: int = 25,
 ) -> dict:
     import yottadb
 
@@ -156,7 +151,7 @@ def build(
             term_tf[key] = term_tf.get(key, 0) + 1
         for t in set(unigrams):
             term_df[t] = term_df.get(t, 0) + 1
-        for ph in phrases:
+        for ph in phrases[:120]:
             key = (ph, pmid)
             phrase_tf[key] = phrase_tf.get(key, 0) + 1
         stats["articles"] += 1
@@ -169,17 +164,8 @@ def build(
                   f"phrases={stats['phrases']} empty={stats['empty']} terms~{len(term_df)}", flush=True)
     flush()
 
-    # df/dlen are independent keys — write in modest chunks (still avoid one huge TP)
-    terms = list(term_df.items())
-    for i in range(0, len(terms), 500):
-        part = terms[i : i + 500]
-
-        def dfcb(*_a, **_k):
-            for term, df in part:
-                yottadb.set(schema.ptermdf, (term,), value=str(df).encode())
-            return yottadb.YDB_OK
-
-        yottadb.tp(dfcb)
+    for term, df in term_df.items():
+        yottadb.set(schema.ptermdf, (term,), value=str(df).encode())
     stats["terms"] = len(term_df)
     bump_stat(schema, schema.ptermstat, {
         "terms": stats["terms"],
