@@ -39,6 +39,9 @@ class Schema:
     # 2026-10-10: abstracts + inverted term index + preprints
     pterm: str = "^PTERM"
     ptermstat: str = "^PTERMSTAT"
+    ptermdf: str = "^PTERMDF"
+    ptermdlen: str = "^PTERMDLEN"
+    ptermphrase: str = "^PTERMPHRASE"
     preprint: str = "^PREPRINT"
     preprintstat: str = "^PREPRINTSTAT"
 
