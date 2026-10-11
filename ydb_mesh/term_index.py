@@ -1,20 +1,25 @@
-"""Inverted term index over ^PUBMED titles+abstracts.
+"""Inverted term index over ^PUBMED titles+abstracts with BM25 ranking.
 
 Schema:
-    ^PTERM(term, pmid) = ""
-    ^PTERMSTAT("terms"|"postings") = count
+    ^PTERM(term, pmid) = tf
+    ^PTERMDF(term) = df
+    ^PTERMDLEN(pmid) = token_count
+    ^PTERMPHRASE(phrase, pmid) = tf   # hyphen compounds + adjacent bigrams
+    ^PTERMSTAT("terms"|"postings"|"docs"|"tokens") = count
 
-Tokenize: lowercase [a-z0-9]+ with optional trailing/leading hyphen strip;
-drop stopwords and 1-char tokens. Max token len 32 (YottaDB key friendly).
+Tokenize: lowercase [a-z0-9]+ (len 2..32); keep hyphen compounds as
+additional phrase keys; drop stopwords and 1-char tokens.
+
+Ranking: Okapi BM25 (k1=1.2, b=0.75) over the term postings.
 
 Usage:
-  python -m ydb_mesh.term_index build --pmid-file pmids.txt
-  python -m ydb_mesh.term_index build --limit 50000
+  python -m ydb_mesh.term_index build [--limit N]
   python -m ydb_mesh.term_index search self-management myasthenia
 """
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import sys
 from typing import Iterable, Optional
@@ -22,6 +27,7 @@ from typing import Iterable, Optional
 from .schema import DEFAULT, Schema, bump_stat
 
 TOKEN_RE = re.compile(r"[a-z0-9]{2,32}")
+HYPHEN_RE = re.compile(r"\b([a-z0-9]{2,32}(?:-[a-z0-9]{2,32})+)\b")
 
 STOP = frozenset(
     """
@@ -34,39 +40,103 @@ STOP = frozenset(
     """.split()
 )
 
+K1 = 1.2
+B = 0.75
+
+
+def tokenize(text: str) -> tuple[list[str], list[str], int]:
+    """Return (unigrams, phrases, raw_token_count).
+
+    Unigrams are stop-filtered. Phrases are hyphen compounds and adjacent
+    non-stopword bigrams joined with a space (max 40 chars).
+    """
+    raw = [t for t in TOKEN_RE.findall(text.lower())]
+    unigrams = [t for t in raw if t not in STOP]
+    phrases: list[str] = []
+    for m in HYPHEN_RE.finditer(text.lower()):
+        comp = m.group(1)
+        if comp not in STOP and len(comp) <= 40:
+            phrases.append(comp)
+    for a, b in zip(unigrams, unigrams[1:]):
+        bigram = f"{a} {b}"
+        if len(bigram) <= 40:
+            phrases.append(bigram)
+    return unigrams, phrases, len(raw)
+
 
 def tokens(text: str) -> list[str]:
-    return [t for t in TOKEN_RE.findall(text.lower()) if t not in STOP]
+    """Back-compat: unigrams only."""
+    return tokenize(text)[0]
+
+
+def _write_pairs(
+    schema: Schema,
+    global_name: str,
+    pairs: list[tuple[str, str]],
+    values: dict[tuple[str, str], int],
+    chunk: int = 200,
+) -> int:
+    """Write (key, pmid)->int in small TPs (avoid TRANS2BIG)."""
+    import yottadb
+
+    n = 0
+    for i in range(0, len(pairs), chunk):
+        part = pairs[i : i + chunk]
+
+        def cb(*_a, **_k):
+            for key, pmid in part:
+                yottadb.set(global_name, (key, pmid), value=str(values[(key, pmid)]).encode())
+            return yottadb.YDB_OK
+
+        yottadb.tp(cb)
+        n += len(part)
+    return n
 
 
 def build(
     schema: Schema = DEFAULT,
     limit: Optional[int] = None,
     pmids: Optional[Iterable[str]] = None,
-    batch: int = 500,
+    batch: int = 50,
 ) -> dict:
     import yottadb
-    stats = {"articles": 0, "postings": 0, "terms_seen": 0, "empty": 0}
 
-    def write_batch(rows: list[tuple[str, str]]) -> None:
-        def cb(*_a, **_k):
-            for term, pmid in rows:
-                yottadb.set(schema.pterm, (term, pmid), value=b"")
-                stats["postings"] += 1
-            return yottadb.YDB_OK
+    stats = {"articles": 0, "postings": 0, "phrases": 0, "empty": 0, "tokens": 0, "terms": 0}
+    term_df: dict[str, int] = {}
+    term_tf: dict[tuple[str, str], int] = {}
+    phrase_tf: dict[tuple[str, str], int] = {}
+    dlen: dict[str, int] = {}
 
-        if rows:
-            yottadb.tp(cb)
-
-    buf: list[tuple[str, str]] = []
-    seen_terms: set[str] = set()
+    def flush() -> None:
+        t_pairs = []
+        t_vals: dict[tuple[str, str], int] = {}
+        for (term, pmid), tf in term_tf.items():
+            t_pairs.append((term, pmid))
+            t_vals[(term, pmid)] = tf
+        if t_pairs:
+            stats["postings"] += _write_pairs(schema, schema.pterm, t_pairs, t_vals)
+        p_pairs = []
+        p_vals: dict[tuple[str, str], int] = {}
+        for (ph, pmid), tf in phrase_tf.items():
+            p_pairs.append((ph, pmid))
+            p_vals[(ph, pmid)] = tf
+        if p_pairs:
+            stats["phrases"] += _write_pairs(schema, schema.ptermphrase, p_pairs, p_vals)
+        term_tf.clear()
+        phrase_tf.clear()
+        for pmid, n in dlen.items():
+            yottadb.set(schema.ptermdlen, (pmid,), value=str(n).encode())
+        dlen.clear()
 
     if pmids is not None:
         src = list(pmids)
     else:
-        src = [s.decode() if isinstance(s, bytes) else str(s)
-               for s in yottadb.subscripts(schema.pubmed, [""])]
+        src = [
+            s.decode() if isinstance(s, bytes) else str(s)
+            for s in yottadb.subscripts(schema.pubmed, [""])
+        ]
 
+    pending = 0
     for pmid in src:
         if limit and stats["articles"] >= limit:
             break
@@ -76,33 +146,112 @@ def build(
             title = title.decode("utf-8", "replace")
         if isinstance(ab, bytes):
             ab = ab.decode("utf-8", "replace")
-        text = f"{title} {ab}"
-        toks = tokens(text)
-        if not toks:
+        unigrams, phrases, raw_n = tokenize(f"{title} {ab}")
+        if not unigrams and not phrases:
             stats["empty"] += 1
-        for t in toks:
-            seen_terms.add(t)
-            buf.append((t, pmid))
+        dlen[pmid] = raw_n
+        stats["tokens"] += raw_n
+        for t in unigrams:
+            key = (t, pmid)
+            term_tf[key] = term_tf.get(key, 0) + 1
+        for t in set(unigrams):
+            term_df[t] = term_df.get(t, 0) + 1
+        for ph in phrases:
+            key = (ph, pmid)
+            phrase_tf[key] = phrase_tf.get(key, 0) + 1
         stats["articles"] += 1
-        if len(buf) >= batch:
-            write_batch(buf)
-            buf = []
+        pending += 1
+        if pending >= batch:
+            flush()
+            pending = 0
         if stats["articles"] % 10000 == 0:
-            print(f"PTERM progress {stats} terms~{len(seen_terms)}", flush=True)
-    if buf:
-        write_batch(buf)
-    stats["terms_seen"] = len(seen_terms)
+            print(f"PTERM progress articles={stats['articles']} postings={stats['postings']} "
+                  f"phrases={stats['phrases']} empty={stats['empty']} terms~{len(term_df)}", flush=True)
+    flush()
+
+    # df/dlen are independent keys — write in modest chunks (still avoid one huge TP)
+    terms = list(term_df.items())
+    for i in range(0, len(terms), 500):
+        part = terms[i : i + 500]
+
+        def dfcb(*_a, **_k):
+            for term, df in part:
+                yottadb.set(schema.ptermdf, (term,), value=str(df).encode())
+            return yottadb.YDB_OK
+
+        yottadb.tp(dfcb)
+    stats["terms"] = len(term_df)
     bump_stat(schema, schema.ptermstat, {
-        "terms": len(seen_terms),
+        "terms": stats["terms"],
         "postings": stats["postings"],
+        "docs": stats["articles"],
+        "tokens": stats["tokens"],
     })
     print("PTERM BUILD", stats, flush=True)
     return stats
 
 
-def search(terms: list[str], schema: Schema = DEFAULT, limit: int = 200) -> list[str]:
-    """AND intersection of postings; returns pmids (best-effort cap)."""
+def bm25_search(
+    query: str,
+    schema: Schema = DEFAULT,
+    limit: int = 20,
+) -> list[tuple[str, float]]:
+    """BM25 over ^PTERM with hyphen/phrase boost from ^PTERMPHRASE."""
     import yottadb
+
+    q_uni, q_phrases, _ = tokenize(query)
+    if not q_uni and not q_phrases:
+        return []
+
+    def iget(global_name: str, path: tuple, default: int = 0) -> int:
+        try:
+            raw = yottadb.get(global_name, path)
+            return int(raw) if raw else default
+        except Exception:
+            return default
+
+    n_docs = iget(schema.ptermstat, ("docs",)) or iget(schema.ptermstat, ("terms",)) or 1
+    avgdl_raw = iget(schema.ptermstat, ("tokens",))
+    n_docs_for_avg = max(iget(schema.ptermstat, ("docs",)), 1)
+    avgdl = max(avgdl_raw / n_docs_for_avg, 1.0)
+
+    scores: dict[str, float] = {}
+
+    def add_postings(key: str, postings_global: str, weight: float) -> None:
+        df = iget(schema.ptermdf, (key,)) if postings_global == schema.pterm else 0
+        if postings_global == schema.ptermphrase:
+            df = 0
+            try:
+                for _ in yottadb.subscripts(postings_global, (key, "")):
+                    df += 1
+                    if df > 20000:
+                        break
+            except Exception:
+                pass
+        idf = math.log(1.0 + (n_docs - df + 0.5) / (df + 0.5))
+        try:
+            for pmid in yottadb.subscripts(postings_global, (key, "")):
+                pid = pmid.decode() if isinstance(pmid, bytes) else str(pmid)
+                tf = iget(postings_global, (key, pid)) or 1
+                dl = iget(schema.ptermdlen, (pid,)) or avgdl
+                denom = tf + K1 * (1.0 - B + B * dl / avgdl)
+                scores[pid] = scores.get(pid, 0.0) + weight * idf * (tf * (K1 + 1.0)) / denom
+        except Exception:
+            pass
+
+    for t in q_uni:
+        add_postings(t, schema.pterm, 1.0)
+    for ph in q_phrases:
+        add_postings(ph, schema.ptermphrase, 1.5)
+
+    ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+    return ranked[:limit]
+
+
+def search(terms: list[str], schema: Schema = DEFAULT, limit: int = 200) -> list[str]:
+    """AND intersection of unigram postings (legacy API)."""
+    import yottadb
+
     sets: list[set[str]] = []
     for term in terms:
         t = term.lower()
@@ -135,12 +284,22 @@ def main(argv: Optional[list[str]] = None) -> int:
             pmids = [ln.strip() for ln in open(args.pmid_file) if ln.strip()]
         build(limit=args.limit, pmids=pmids, batch=args.batch)
     else:
-        for pmid in search(args.terms, limit=args.limit):
+        query = " ".join(args.terms)
+        ranked = bm25_search(query, limit=args.limit)
+        if not ranked:
+            for pmid in search(args.terms, limit=args.limit):
+                import yottadb
+                title = yottadb.get(DEFAULT.pubmed, (pmid,)) or b""
+                if isinstance(title, bytes):
+                    title = title.decode("utf-8", "replace")
+                print(pmid, title[:100])
+        else:
             import yottadb
-            title = yottadb.get(DEFAULT.pubmed, (pmid,)) or b""
-            if isinstance(title, bytes):
-                title = title.decode("utf-8", "replace")
-            print(pmid, title[:100])
+            for pmid, score in ranked:
+                title = yottadb.get(DEFAULT.pubmed, (pmid,)) or b""
+                if isinstance(title, bytes):
+                    title = title.decode("utf-8", "replace")
+                print(f"{score:.3f} {pmid} {title[:100]}")
     return 0
 
 
