@@ -124,15 +124,16 @@ def build(
         dlen.clear()
 
     if pmids is not None:
-        src = list(pmids)
+        pmid_iter = iter(list(pmids))
     else:
-        src = [
-            s.decode() if isinstance(s, bytes) else str(s)
-            for s in yottadb.subscripts(schema.pubmed, [""])
-        ]
+        # Lazy walk — never materialize 40M PMIDs (ydb-mesh#12).
+        def _walk():
+            for s in yottadb.subscripts(schema.pubmed, [""]):
+                yield s.decode() if isinstance(s, bytes) else str(s)
+        pmid_iter = _walk()
 
     pending = 0
-    for pmid in src:
+    for pmid in pmid_iter:
         if limit and stats["articles"] >= limit:
             break
         title = yottadb.get(schema.pubmed, (pmid,)) or b""
