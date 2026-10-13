@@ -4,7 +4,7 @@ Safe to re-run: default is skip when an abstract already exists.
 Pass --force to overwrite.
 
 Usage:
-  python -m ydb_mesh.abstract_backfill /home/mark/_data/pubmed-baseline/*.xml.gz
+  python -m ydb_mesh.abstract_backfill $HOME/_data/pubmed-baseline/*.xml.gz
   python -m ydb_mesh.abstract_backfill --force --stats-every 25 <paths...>
 """
 from __future__ import annotations

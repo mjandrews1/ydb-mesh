@@ -1,6 +1,6 @@
 """Wave 1 smoke: emit_edge writes both directions."""
 import sys
-sys.path.insert(0, "/home/mark/ydb-mesh")
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 sys.path.insert(0, "/Users/mark/ydb-mesh")
 
 
