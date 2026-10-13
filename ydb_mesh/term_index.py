@@ -260,7 +260,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     b = sub.add_parser("build")
     b.add_argument("--limit", type=int, default=None)
     b.add_argument("--pmid-file", default=None)
-    b.add_argument("--batch", type=int, default=500)
+    b.add_argument("--batch", type=int, default=25)  # ydb-mesh#12 TRANS2BIG
     s = sub.add_parser("search")
     s.add_argument("terms", nargs="+")
     s.add_argument("--limit", type=int, default=20)
