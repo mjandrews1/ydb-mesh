@@ -1,6 +1,6 @@
 # Release checklist
 
-> Shared gate for JvMumps · mJVM · m-lsp · m-semantics · ydb-mesh · ydb-infra.
+> Shared gate for JavaM · mJVM · m-lsp · m-semantics · **MeshGraph** (`ydb-mesh`) · ydb-infra.
 > Run from a clean tree with `gh` authenticated as an admin of `mjandrews1`.
 
 ## 1. CI required-check enforcement (do this first)
@@ -19,7 +19,7 @@
 | jvmumps | `smoke` |
 | m-lsp | `test` |
 | m-semantics | `dafny` |
-| ydb-mesh | `test` |
+| MeshGraph (`ydb-mesh`) | `test` |
 | ydb-infra | `lint-scripts` |
 
 Preview without touching remotes: `DRY_RUN=1 …/ci-block-probe.sh`
@@ -29,7 +29,7 @@ Preview without touching remotes: `DRY_RUN=1 …/ci-block-probe.sh`
 - [ ] jvmumps `smoke` green (includes native mJVM **MATCH=131 / ERR=0** gate)
 - [ ] m-lsp `test` green
 - [ ] m-semantics `dafny` green (MSemantics + MPattern)
-- [ ] ydb-mesh `test` green (yottadb cases self-skip off-box)
+- [ ] MeshGraph `test` green (`ydb-mesh` workflow) (yottadb cases self-skip off-box)
 - [ ] ydb-infra `lint-scripts` green
 
 ## 3. Working tree hygiene
