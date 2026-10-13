@@ -11,7 +11,7 @@ Endpoints (JSON):
   GET  /health -> {"status":"ok"}
 
 Usage (U01):
-  source /home/mark/ydb-py/.venv/bin/activate
+  source $HOME/ydb-py/.venv/bin/activate
   source /usr/local/etc/ydb_env_set
   python3 mcp_server.py
 """

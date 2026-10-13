@@ -3,7 +3,7 @@
 
 Run on U01 with YottaDB env:
   source /usr/local/etc/ydb_env_set
-  source /home/mark/ydb-py/.venv/bin/activate
+  source $HOME/ydb-py/.venv/bin/activate
   python3 tools/related_qa.py [--max-ids 5]
 
 Checks:
@@ -21,7 +21,7 @@ from collections import Counter
 import yottadb
 from yottadb import YDBNodeEnd
 
-sys.path.insert(0, "/home/mark/ydb-mesh")
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 from ydb_mesh.graph import related  # noqa: E402
 from ydb_mesh.schema import DEFAULT  # noqa: E402
 

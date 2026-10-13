@@ -12,7 +12,7 @@ Hard limits (anti-abuse):
   * no regex; no POST body
 
 Usage (on U01):
-  source /home/mark/ydb-py/.venv/bin/activate && source /usr/local/etc/ydb_env_set
+  source $HOME/ydb-py/.venv/bin/activate && source /usr/local/etc/ydb_env_set
   python3 search_server.py
 """
 from __future__ import annotations
