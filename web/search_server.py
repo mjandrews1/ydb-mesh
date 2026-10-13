@@ -74,7 +74,7 @@ def page(inner: str) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MeSH keyword search</title>
+<title>MeshGraph — MeSH keyword search</title>
 <style>
 :root {{ color-scheme: light dark; font-family: system-ui, sans-serif; }}
 body {{ max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }}
@@ -93,6 +93,7 @@ th, td {{ text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #888
 <h1>MeSH keyword search</h1>
 {inner}
 <p class="muted">Default sort: name (A–Z). Max {MAX_RESULTS} results. Queries limited to {MAX_QUERY} characters.</p>
+  <footer><small>MeshGraph · ydb-mesh · index is not medical advice</small></footer>
 </body>
 </html>
 """

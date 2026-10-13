@@ -1,4 +1,4 @@
-# ydb-mesh critical path
+# MeshGraph (`ydb-mesh`) critical path
 
 **Goal:** PubMed + MeSH citation graph on YottaDB with forward/backward links.
 
