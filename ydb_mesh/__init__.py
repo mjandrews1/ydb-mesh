@@ -18,6 +18,7 @@ __all__ = [
     "mesh_loaded",
     "mesh_name",
     "related",
+    "related_rev",
     "unescape_entities",
 ]
 
@@ -28,7 +29,7 @@ def __getattr__(name: str) -> Any:
         from .schema import Schema
 
         return Schema
-    if name in ("emit_edge", "related"):
+    if name in ("emit_edge", "related", "related_rev"):
         from . import graph
 
         return getattr(graph, name)
