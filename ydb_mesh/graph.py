@@ -81,6 +81,8 @@ def related(
             if not isinstance(node, tuple) or len(node) < 5:
                 continue
             r, tt, tid = node[2], node[3], node[4]
+            dec = lambda x: x.decode() if isinstance(x, (bytes, bytearray)) else x
+            r, tt, tid = dec(r), dec(tt), dec(tid)
             if rel and r != rel:
                 continue
             if to_type and tt != to_type:
@@ -119,6 +121,8 @@ def related_rev(
             if not isinstance(node, tuple) or len(node) < 5:
                 continue
             r, ft, fid = node[2], node[3], node[4]
+            dec = lambda x: x.decode() if isinstance(x, (bytes, bytearray)) else x
+            r, ft, fid = dec(r), dec(ft), dec(fid)
             if rel and r != rel:
                 continue
             if from_type and ft != from_type:
