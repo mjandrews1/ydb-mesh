@@ -18,7 +18,7 @@ def main() -> int:
     from ydb_mesh.graph import HAS_MESH, HAS_SUBJECT, emit_edge, related, related_rev
     from ydb_mesh.schema import Schema
 
-    sch = Schema.with_suffix("TREV")
+    sch = Schema().with_suffix("TREV")
     ui, pmid = "D000001", "14000001"
     emit_edge("mesh", ui, HAS_MESH, "pubmed", pmid, rev_rel=HAS_SUBJECT, schema=sch)
 
