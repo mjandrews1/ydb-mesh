@@ -22,13 +22,19 @@ def main() -> int:
     ui, pmid = "D000001", "14000001"
     emit_edge("mesh", ui, HAS_MESH, "pubmed", pmid, rev_rel=HAS_SUBJECT, schema=sch)
 
-    out = list(related("mesh", ui, schema=sch))
+    def norm(rows):
+        out = []
+        for r, ft, fid in rows:
+            dec = lambda x: x.decode() if isinstance(x, (bytes, bytearray)) else str(x)
+            out.append((dec(r), dec(ft), dec(fid)))
+        return out
+
+    out = norm(related("mesh", ui, schema=sch))
     assert out == [(HAS_MESH, "pubmed", pmid)], out
-    rev = list(related_rev("pubmed", pmid, schema=sch))
+    rev = norm(related_rev("pubmed", pmid, schema=sch))
     assert rev == [(HAS_SUBJECT, "mesh", ui)], rev
-    # filter
-    assert list(related_rev("pubmed", pmid, from_type="mesh", schema=sch)) == rev
-    assert list(related_rev("pubmed", pmid, rel="nope", schema=sch)) == []
+    assert norm(related_rev("pubmed", pmid, from_type="mesh", schema=sch)) == rev
+    assert norm(related_rev("pubmed", pmid, rel="nope", schema=sch)) == []
     print("TEST related_rev OK", out, rev)
     return 0
 
