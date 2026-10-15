@@ -21,3 +21,16 @@ See [`meshgraph-mcp.json`](meshgraph-mcp.json).
 
 ### Done when
 Smithery + official registry updated; URL recorded in ydb-mesh#28.
+
+
+## Submit (operator)
+
+```bash
+./tools/submit_mcp_registry.sh
+# or:
+npx @modelcontextprotocol/registry-cli publish web/server.json   # official
+npx @smithery/cli auth login && npx @smithery/cli publish       # Smithery
+```
+
+Requires **your** registry credentials (GitHub/DNS namespace proof + Smithery login).
+Files ready: `web/server.json` (official) · `web/meshgraph-mcp.json` (listing fields).
