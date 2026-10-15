@@ -15,6 +15,7 @@ __all__ = [
     "build_term_index",
     "search_terms",
     "load_preprints",
+    "link_preprints",
     "mesh_loaded",
     "mesh_name",
     "related",
@@ -59,3 +60,6 @@ def __getattr__(name: str) -> Any:
     if name == "load_preprints":
         from .preprint_loader import load_preprints
         return load_preprints
+    if name == "link_preprints":
+        from .preprint_link import link_preprints
+        return link_preprints

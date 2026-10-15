@@ -1,0 +1,41 @@
+{
+  "name": "meshgraph-mcp",
+  "displayName": "MeshGraph MeSH search",
+  "version": "0.1.0",
+  "description": "Substring MeSH search over the YottaDB MeshGraph citation index. Read-only. No writes.",
+  "homepage": "https://home.flamingyak.com/",
+  "repository": "https://github.com/mjandrews1/ydb-mesh",
+  "transport": {
+    "type": "http",
+    "url": "https://home.flamingyak.com/mcp",
+    "protocol": "json-rpc-2.0",
+    "methods": ["initialize", "tools/list", "tools/call"]
+  },
+  "auth": { "type": "http_basic", "note": "portal basic auth or Tailscale" },
+  "tools": [
+    {
+      "name": "mesh_search",
+      "description": "Casefold substring search over MeSH names (max 25 hits).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "minLength": 2, "maxLength": 64 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 25, "default": 10 }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "mesh_get",
+      "description": "Look up a MeSH descriptor/qualifier UI (e.g. D009157).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ui": { "type": "string", "pattern": "^[A-Z]{1,2}[0-9]{6,9}$" }
+        },
+        "required": ["ui"]
+      }
+    }
+  ],
+  "keywords": ["MeSH", "PubMed", "medical", "search", "MeshGraph"]
+}
