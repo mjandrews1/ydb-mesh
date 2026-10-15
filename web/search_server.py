@@ -29,6 +29,7 @@ MIN_QUERY = 2
 LISTEN = os.environ.get("SEARCH_LISTEN", "127.0.0.1:8081")
 MESHNAME = "^MESHNAME"
 MESH = "^MESH"
+MAX_ARTICLES = 10
 
 
 def search_hits(q: str) -> tuple[list[tuple[str, str]], bool]:
@@ -66,6 +67,25 @@ def search_hits(q: str) -> tuple[list[tuple[str, str]], bool]:
         truncated = True
     hits.sort(key=lambda t: t[1].casefold())
     return hits, truncated
+
+
+def article_hits(q: str) -> list[tuple[str, float, str]]:
+    """BM25 top-k: [(pmid, score, title), ...] via ydb_mesh.term_index."""
+    try:
+        from ydb_mesh.term_index import bm25_search
+        import yottadb
+        ranked = bm25_search(q, limit=MAX_ARTICLES)
+        out = []
+        for pmid, score in ranked:
+            try:
+                t = yottadb.get("^PUBMED", (pmid,)) or b""
+                title = t.decode("utf-8", "replace") if isinstance(t, (bytes, bytearray)) else str(t)
+            except Exception:
+                title = ""
+            out.append((str(pmid), float(score), title[:160]))
+        return out
+    except Exception:
+        return []
 
 
 def page(inner: str) -> str:
@@ -118,13 +138,31 @@ def results_view(q: str, hits: list[tuple[str, str]], truncated: bool) -> str:
         for ui, name in hits
     )
     extra = f" (first {MAX_RESULTS} shown)" if truncated else ""
+    arts = article_hits(q)
+    art_html = ""
+    if arts:
+        arows = "\n".join(
+            "<tr><td>{}</td><td class=score>{:.3f}</td><td>{}</td></tr>".format(
+                html.escape(p), sc, html.escape(t)
+            )
+            for p, sc, t in arts
+        )
+        art_html = f"""
+<h2>Articles (BM25 top {len(arts)})</h2>
+<table>
+<thead><tr><th>PMID</th><th>Score</th><th>Title</th></tr></thead>
+<tbody>
+{arows}
+</tbody></table>
+"""
     return f"""
-<p class="muted">{len(hits)} result(s) for <strong>{html.escape(q)}</strong>{extra}. Sorted by name (A–Z).</p>
+<p class="muted">{len(hits)} MeSH hit(s) for <strong>{html.escape(q)}</strong>{extra}. Sorted by name (A–Z).</p>
 <table>
 <thead><tr><th>UI</th><th>Name</th></tr></thead>
 <tbody>
 {rows}
 </tbody></table>
+{art_html}
 <form method="get" action="/search">
   <label for="q">Search again</label>
   <input id="q" name="q" type="search" maxlength="{MAX_QUERY}" value="{html.escape(q)}">

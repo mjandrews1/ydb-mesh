@@ -20,7 +20,7 @@ def main():
     print("related", outs)
     assert fwd == b"Y"
     assert rev == b"Y"
-    assert (b"has_mesh", b"pubmed", "12345") in outs
+    assert ("has_mesh", "pubmed", "12345") in outs
     print("WAVE1 EMIT_EDGE OK")
 
 
