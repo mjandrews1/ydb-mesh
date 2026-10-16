@@ -37,7 +37,7 @@ def link_preprints(
     schema: Schema = DEFAULT,
     limit: int = 0,
     dry_run: bool = False,
-    scan_cap: int = 200_000,
+    scan_cap: int = 50_000_000,
 ) -> dict:
     """Join unlinked preprints to PubMed without a full in-memory title map.
 
@@ -94,12 +94,18 @@ def link_preprints(
     by_doi_pref = {d.casefold(): d for d, _ in want}
     pid = ""
     scanned = 0
+    import time
+    t0 = time.time()
     try:
         while scanned < scan_cap:
             pid = yottadb.subscript_next(schema.pubmed, (pid,))
             if not pid:
                 break
             scanned += 1
+            if scanned % 2_000_000 == 0:
+                dt = time.time() - t0
+                rate = scanned / dt if dt > 0 else 0
+                print(f"  scan {scanned} pmids  {rate:.0f}/s  linked={stats['linked']}", flush=True)
             pid_s = _decode(pid)
             try:
                 d = yottadb.get(schema.pubmed, (pid, "doi"))
@@ -149,7 +155,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--scan-cap", type=int, default=200_000)
+    ap.add_argument("--scan-cap", type=int, default=50_000_000)
     args = ap.parse_args(argv)
     link_preprints(limit=args.limit, dry_run=args.dry_run, scan_cap=args.scan_cap)
     return 0
