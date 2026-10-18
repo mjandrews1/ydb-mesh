@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Archive MeshGraph rows outside the hot window (RETENTION.md).
 
-Default: PMID < cutoff (modern 2y proxy) exported to gzip then deleted
-from live ^PUBMED / ^PTERM* / ^GRAPH edges. --dry-run lists only.
+Default: PMID < cutoff exported to gzip (full subtree) then deleted
+from live ^PUBMED. --dry-run lists only.
+
+Export format (one line per node):
+  pmid<TAB>subscript.path<TAB>value
 
 Usage:
   archive_mesh.py --cutoff-pmid 35000000 --out /home/mark/coldstore/meshgraph
@@ -13,13 +16,34 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import os
-import sys
 import time
 from pathlib import Path
 
 
+def walk_nodes(name, base_subs):
+    """Yield (subs_tuple, value_bytes) for every node at and below base_subs."""
+    # node itself
+    try:
+        v = yottadb.get(name, base_subs)
+    except Exception:
+        v = None
+    if v is not None:
+        yield base_subs, v
+    # children
+    last = b""
+    while True:
+        try:
+            child = yottadb.subscript_next(name, base_subs + (last,))
+        except YDBNodeEnd:
+            break
+        if not child:
+            break
+        last = child
+        yield from walk_nodes(name, base_subs + (child,))
+
+
 def main() -> int:
+    global yottadb, YDBNodeEnd
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--cutoff-pmid", type=int, default=35_000_000)
     ap.add_argument("--out", default=str(Path.home() / "coldstore" / "meshgraph"))
@@ -38,10 +62,11 @@ def main() -> int:
     stamp = time.strftime("%Y-%m-%d")
     dest = out / f"pubmed-{stamp}.csv.gz"
     n = 0
+    n_nodes = 0
     t0 = time.time()
     # one pass: collect old pmids from ^PUBMED
     old = []
-    pid = ""
+    pid = b""
     try:
         while True:
             pid = yottadb.subscript_next("^PUBMED", (pid,))
@@ -66,23 +91,35 @@ def main() -> int:
 
     with gzip.open(dest, "wt", encoding="utf-8") as fh:
         for pmid in old:
-            try:
-                title = yottadb.get("^PUBMED", (pmid,))
-            except Exception:
-                title = b""
-            t = title.decode("utf-8", "replace") if isinstance(title, (bytes, bytearray)) else str(title)
-            fh.write(f"{pmid.decode() if isinstance(pmid, bytes) else pmid}\t{t}\n")
+            pid_str = pmid.decode() if isinstance(pmid, bytes) else str(pmid)
+            for subs, val in walk_nodes("^PUBMED", (pmid,)):
+                # subscript path after the pmid
+                path = ".".join(
+                    s.decode("utf-8", "replace") if isinstance(s, bytes) else str(s)
+                    for s in subs[1:]
+                )
+                v = val.decode("utf-8", "replace") if isinstance(val, (bytes, bytearray)) else str(val)
+                fh.write(f"{pid_str}\t{path}\t{v}\n")
+                n_nodes += 1
             n += 1
-            # delete live nodes
+            # full-tree delete (KILL ^PUBMED(pmid))
             try:
-                yottadb.delete_node("^PUBMED", (pmid,))
+                yottadb.delete_tree("^PUBMED", (pmid,))
             except Exception:
                 pass
+            if n % 1_000_000 == 0:
+                print(f"  exported {n} …", flush=True)
     man = out / "manifest.json"
-    payload = {"date": stamp, "pmid_cutoff": args.cutoff_pmid, "exported": n, "file": dest.name}
+    payload = {
+        "date": stamp,
+        "pmid_cutoff": args.cutoff_pmid,
+        "exported": n,
+        "nodes": n_nodes,
+        "file": dest.name,
+    }
     man.write_text(json.dumps(payload, indent=2))
     dt = time.time() - t0
-    print(f"MESH ARCHIVE exported={n} file={dest} manifest={man} wall_s={dt:.1f}")
+    print(f"MESH ARCHIVE exported={n} articles / {n_nodes} nodes file={dest} manifest={man} wall_s={dt:.1f}")
     return 0
 
 
