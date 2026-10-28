@@ -1,0 +1,17 @@
+[Unit]
+Description=YottaDB Dashboard metrics (safe gvstat exporter)
+After=network-online.target ydb-web-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mark
+Group=mark
+Environment=YOTTA_PROM_PORT=9187
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 /home/mark/ydb-infra/ydb-dashboard-metrics.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

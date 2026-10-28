@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
+sys.path.insert(0, "/home/mark/ydb-mesh")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ydb_mesh.author_loader import (  # noqa: E402

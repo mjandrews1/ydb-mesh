@@ -1,0 +1,9 @@
+[Unit]
+Description=MeshGraph daily update (fetch updatefiles, load missing, BM25 catch-up)
+After=network-online.target
+
+[Service]
+User=mark
+Type=oneshot
+ExecStart=/home/mark/ydb-mesh/tools/daily-update.sh
+TimeoutStartSec=6h

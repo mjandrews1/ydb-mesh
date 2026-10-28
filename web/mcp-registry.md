@@ -4,12 +4,12 @@
 **Endpoint:** `https://home.flamingyak.com/mcp` (also Tailscale / U01)  
 **Transport:** HTTP POST JSON-RPC 2.0 (`initialize`, `tools/list`, `tools/call`)  
 **Tools:** `mesh_search` (substring MeSH) · `mesh_get` (UI → preferred name)  
-**Auth:** HTTP basic via portal (or Tailscale ACL)  
+**Auth:** none — public read-only (portal basicauth guards only `/`, `/ydb`, `/ydb/*`)  
 **Writes:** none (read-only YottaDB)
 
 ## Manifest (paste into registries)
 
-See [`meshgraph-mcp.json`](meshgraph-mcp.json).
+See [`meshgraph-mcp.json`](meshgraph-mcp.json); newer per-registry drafts (official registry / Smithery / Glama) live in [`registry/`](../registry/) (prepared 2026-10-28, #28).
 
 ### Registries
 | Registry | Status | Notes |
@@ -21,16 +21,3 @@ See [`meshgraph-mcp.json`](meshgraph-mcp.json).
 
 ### Done when
 Smithery + official registry updated; URL recorded in ydb-mesh#28.
-
-
-## Submit (operator)
-
-```bash
-./tools/submit_mcp_registry.sh
-# or:
-npx @modelcontextprotocol/registry-cli publish web/server.json   # official
-npx @smithery/cli auth login && npx @smithery/cli publish       # Smithery
-```
-
-Requires **your** registry credentials (GitHub/DNS namespace proof + Smithery login).
-Files ready: `web/server.json` (official) · `web/meshgraph-mcp.json` (listing fields).

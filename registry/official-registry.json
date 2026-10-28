@@ -1,0 +1,42 @@
+{
+  "name": "meshgraph-mcp",
+  "description": "Substring MeSH descriptor search over a YottaDB citation index (MeshGraph). Read-only: mesh_search (substring name search, ui+name hits, truncated flag) and mesh_get (descriptor name by UI). No writes.",
+  "version": "0.1.0",
+  "transport": {
+    "type": "http",
+    "url": "https://home.flamingyak.com/mcp"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "tools": [
+    {
+      "name": "mesh_search",
+      "description": "Substring MeSH name search (MeshGraph / YottaDB).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "minLength": 2, "maxLength": 64 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 25 }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "mesh_get",
+      "description": "Get MeSH descriptor name by UI (e.g. D009157).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ui": { "type": "string" }
+        },
+        "required": ["ui"]
+      }
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/mjandrews1/ydb-mesh"
+  },
+  "website": "https://home.flamingyak.com",
+  "protocolVersion": "2024-11-05"
+}

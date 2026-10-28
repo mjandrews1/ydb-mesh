@@ -1,0 +1,9 @@
+[Unit]
+Description=MeshGraph weekly author pass over updatefiles
+After=network-online.target
+
+[Service]
+User=mark
+Type=oneshot
+ExecStart=/home/mark/ydb-mesh/tools/weekly-author.sh
+TimeoutStartSec=12h

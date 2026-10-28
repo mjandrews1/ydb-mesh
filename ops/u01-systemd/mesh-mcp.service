@@ -1,0 +1,14 @@
+[Unit]
+Description=MeshGraph MCP server (ydb-mesh web/mcp_server.py, read-only)
+After=network.target
+
+[Service]
+User=mark
+WorkingDirectory=/home/mark/ydb-mesh/web
+Environment=MCP_LISTEN=127.0.0.1:8082
+ExecStart=/bin/bash -c "source /home/mark/ydb-py/.venv/bin/activate && source /usr/local/etc/ydb_env_set && exec /home/mark/ydb-py/.venv/bin/python3 /home/mark/ydb-mesh/web/mcp_server.py"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

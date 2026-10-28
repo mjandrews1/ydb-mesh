@@ -11,7 +11,7 @@
     "protocol": "json-rpc-2.0",
     "methods": ["initialize", "tools/list", "tools/call"]
   },
-  "auth": { "type": "http_basic", "note": "portal basic auth or Tailscale" },
+  "auth": { "type": "none", "note": "public read-only" },
   "tools": [
     {
       "name": "mesh_search",

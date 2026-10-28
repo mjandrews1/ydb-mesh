@@ -58,3 +58,31 @@ Replay: `tools/replay_mesh_archive.py` (same idea as tsx `replay_archive.py`).
 
 ## Non-goals
 - No paid storage tier · no silent journal deletion · no second YDB writer during rebuild.
+
+---
+
+## Executed pass (2026-10-17) — as-run record
+
+The first retention pass ran 2026-10-17 via `tools/archive_mesh.py` and deviates
+from the draft above in three ways that matter for anyone reading the live DB:
+
+- **Cutoff was PMID, not pubdate:** everything below **PMID 35,000,000** was
+  exported and KILLed from `^PUBMED` (33,458,179 articles / 389,519,467 nodes →
+  `U02:coldstore/meshgraph/pubmed-2026-10-17.csv.gz`, 12.4G, manifest.json,
+  plus a titles-only export `pubmed-2026-10-17-titles-only.csv.gz`, 1.2G).
+  Export format: `pmid<TAB>subscript.path<TAB>value` per node, full subtree.
+- **The PTERM index was NOT pruned.** `^PTERM`/`^PTERMDLEN` still cover the full
+  corpus by design (42.5M docs, 7.0B postings). Consequences:
+  - BM25 search finds archived articles; their titles resolve empty from
+    `^PUBMED` (the web tier falls back to an empty string). This is expected.
+  - **~32.8M PTERM docs point at PMIDs absent from `^PUBMED` — these are NOT
+    phantoms and must never be killed.** Any "phantom cleanup" that deletes
+    `^PTERM`/`^PTERMDLEN` entries for archived PMIDs would destroy 77% of the
+    searchable index. (`MASTER-INVENTORY.md` §9f, 2026-10-28.)
+- **The 4 GB cap never applied** — the live DB is 237G and the real constraint
+  is U01's `/` (456G LV). The pass was a space-recovery measure, not a
+  cap-enforcement one.
+
+Restore path for a single article: the coldstore export above; for the whole
+corpus: the PubMed baseline on `U02:coldstore/_data/pubmed-baseline` plus
+updatefiles, or the next annual baseline.

@@ -139,7 +139,11 @@ def _write_batch(
                 if mh.ui not in ui_cache:
                     ui_cache[mh.ui] = mesh_loader.mesh_loaded(mh.ui, schema=sch)
                 if not ui_cache[mh.ui]:
-                    stats["dangling"] += 1
+                    # MeSH Supplementary Concept Records ("C" + 9 digits) are
+                    # deliberately absent from ^MESH (desc2026 only) -- an
+                    # expected drop, not a dangling ref.
+                    if not (len(mh.ui) == 10 and mh.ui.startswith("C") and mh.ui[1:].isdigit()):
+                        stats["dangling"] += 1
                     continue
                 yottadb.set(
                     sch.graph, ("mesh", mh.ui, "has_mesh", "pubmed", art.pmid), value=meta
