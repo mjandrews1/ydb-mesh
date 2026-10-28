@@ -1,0 +1,9 @@
+[Unit]
+Description=MeshGraph DB backup to U02 (quiescent-copy)
+After=network-online.target
+
+[Service]
+User=mark
+Type=oneshot
+ExecStart=/home/mark/meshgraph-backup.sh
+TimeoutStartSec=8h

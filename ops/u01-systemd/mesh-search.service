@@ -1,0 +1,21 @@
+[Unit]
+Description=MeSH keyword search over YottaDB (ydb-mesh web)
+After=network-online.target ydb-web-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mark
+WorkingDirectory=/home/mark/ydb-mesh/web
+Environment=SEARCH_LISTEN=127.0.0.1:8081
+# ydb_env_set is not set -u safe
+ExecStart=/bin/bash -c 'source /home/mark/ydb-py/.venv/bin/activate && source /usr/local/etc/ydb_env_set && exec /home/mark/ydb-py/.venv/bin/python3 /home/mark/ydb-mesh/web/search_server.py'
+Restart=on-failure
+RestartSec=2
+StandardOutput=append:/var/log/mesh-search.log
+StandardError=append:/var/log/mesh-search.log
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

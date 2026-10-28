@@ -1,10 +1,7 @@
-# MeshGraph (`ydb-mesh`) — PubMed + MeSH graph on YottaDB
-
-> **Product name: MeshGraph** · code/repo **`ydb-mesh`** · globals `^GRAPH` / `^PUBMED` / `^PTERM` unchanged.
-> See `docs/BRANDING.md`.
+# ydb-mesh — PubMed + MeSH graph on YottaDB
 
 **Created:** 2026-10-05  
-**Goal:** **MeshGraph** — rebuild the PubMed / MeSH controlled-vocabulary citation database (forward + reverse edges) on **YottaDB**, Python front-end (`ydb-py` Store/REPL).  
+**Goal:** Rebuild the PubMed / MeSH controlled-vocabulary citation database (with forward + backward relationship records) on **YottaDB**, with **Python** as the front-end (shared `ydb-py` Store/REPL).  
 **Parallel to:** `~/ydb-py` (Python↔YottaDB plumbing), `~/fst` (ranking/graph product), RSM ports (language engines).
 
 ---

@@ -1,0 +1,18 @@
+[Unit]
+Description=YottaDB Dashboard UI
+After=network-online.target ydb-dashboard-metrics.service
+Wants=ydb-dashboard-metrics.service
+
+[Service]
+Type=simple
+User=mark
+Group=mark
+Environment=YDB_DASH_HTML=/home/mark/ydb-infra/ydb-dashboard.html
+Environment=YOTTA_PROM_PORT=9187
+Environment=YDB_DASH_UI_PORT=9188
+ExecStart=/usr/bin/python3 /home/mark/ydb-infra/ydb-dashboard-ui.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

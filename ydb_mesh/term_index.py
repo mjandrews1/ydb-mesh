@@ -178,12 +178,15 @@ def build(
     return stats
 
 
-def bm25_search(
+def _bm25_scan_search(
     query: str,
     schema: Schema = DEFAULT,
     limit: int = 20,
 ) -> list[tuple[str, float]]:
-    """BM25 over ^PTERM with hyphen/phrase boost from ^PTERMPHRASE."""
+    """Full-scan BM25 over ^PTERM with hyphen/phrase boost from ^PTERMPHRASE.
+
+    Kept as the parity oracle for bm25_search_wand.
+    """
     import yottadb
 
     q_uni, q_phrases, _ = tokenize(query)
@@ -235,6 +238,200 @@ def bm25_search(
     return ranked[:limit]
 
 
+def bm25_search_wand(
+    query: str,
+    schema: Schema = DEFAULT,
+    limit: int = 20,
+) -> list[tuple[str, float]]:
+    """WAND-pruned BM25 top-k over ^PTERM with phrase boost.
+
+    Same ranking function as _bm25_scan_search. Soundness: the per-term
+    saturated bound Idf*(k1+1) (BM25.dfy ScoreSaturates /
+    SaturatedSumIsValidBound) upper-bounds each term's contribution, so
+    skipping docs whose bound-sum cannot reach the current k-th best score
+    cannot change the top-k (BM25.dfy PrunedScanYieldsTopK).
+
+    Posting lists are traversed with cursor seeks (subscript_next from the
+    pivot docid) instead of full walks.
+    """
+    import heapq
+
+    import yottadb
+
+    q_uni, q_phrases, _ = tokenize(query)
+    if not q_uni and not q_phrases:
+        return []
+    if limit <= 0:
+        return []
+
+    def iget(global_name: str, path: tuple, default: int = 0) -> int:
+        try:
+            raw = yottadb.get(global_name, path)
+            return int(raw) if raw else default
+        except Exception:
+            return default
+
+    def seek_gt(global_name: str, key: str, after) -> int | None:
+        """Smallest pmid strictly after `after` ($ORDER semantics); None at end."""
+        if after != "":
+            after = str(after)
+        try:
+            nxt = yottadb.subscript_next(global_name, (key, after))
+        except Exception:
+            return None
+        if not nxt:
+            return None
+        if isinstance(nxt, bytes):
+            nxt = nxt.decode()
+        return int(nxt)
+
+    def seek_ge(global_name: str, key: str, target: int) -> int | None:
+        """Smallest pmid >= target; None at end. (nextGE cursor seek.)"""
+        try:
+            nxt = yottadb.subscript_next(global_name, (key, str(target - 1)))
+        except Exception:
+            return None
+        if not nxt:
+            return None
+        if isinstance(nxt, bytes):
+            nxt = nxt.decode()
+        return int(nxt)
+
+    n_docs = iget(schema.ptermstat, ("docs",)) or iget(schema.ptermstat, ("terms",)) or 1
+    avgdl_raw = iget(schema.ptermstat, ("tokens",))
+    n_docs_for_avg = max(iget(schema.ptermstat, ("docs",)), 1)
+    avgdl = max(avgdl_raw / n_docs_for_avg, 1.0)
+
+    def phrase_df(key: str) -> int:
+        """Phrase df capped at 20001 (exactly what the scan path computes).
+
+        Cached under ^PTERMPHRASEDF so only the first query per phrase pays
+        the capped postings walk.
+        """
+        v = iget(schema.ptermphrasedf, (key,), -1)
+        if v >= 0:
+            return v
+        cnt = 0
+        try:
+            for _ in yottadb.subscripts(schema.ptermphrase, (key, "")):
+                cnt += 1
+                if cnt > 20000:
+                    break
+        except Exception:
+            pass
+        try:
+            yottadb.set(schema.ptermphrasedf, (key,), value=str(cnt).encode())
+        except Exception:
+            pass
+        return cnt
+
+    # Query components (duplicates preserved: the scan path adds them twice).
+    parts: list[tuple[str, str, float, float]] = []  # (key, global, weight, idf)
+    for t in q_uni:
+        # df==0 here means the term has no postings in the corpus; the scan
+        # path then adds nothing (empty list), so skip for parity.
+        if iget(schema.ptermdf, (t,)) <= 0:
+            continue
+        idf = math.log(1.0 + (n_docs - iget(schema.ptermdf, (t,)) + 0.5) / (iget(schema.ptermdf, (t,)) + 0.5))
+        parts.append((t, schema.pterm, 1.0, idf))
+    for ph in q_phrases:
+        # phrase idf uses the capped df count (parity with the scan path)
+        pdf = phrase_df(ph)
+        idf = math.log(1.0 + (n_docs - pdf + 0.5) / (pdf + 0.5))
+        parts.append((ph, schema.ptermphrase, 1.5, idf))
+
+    # Lists ordered rarest-first: effective pivoting, irrelevant to soundness.
+    def part_df(part) -> int:
+        key, g, _w, _idf = part
+        if g == schema.pterm:
+            return iget(schema.ptermdf, (key,))
+        return phrase_df(key)
+
+    parts.sort(key=part_df)
+
+    lists = []
+    for key, g, w, idf in parts:
+        cur = seek_gt(g, key, "")
+        if cur is not None:
+            lists.append({"g": g, "key": key, "w": w, "idf": idf,
+                          "ub": w * idf * (K1 + 1.0), "cur": cur})
+    if not lists:
+        return []
+
+    heap: list[tuple[float, int]] = []  # min-heap of (score, pmid)
+    threshold = 0.0
+
+    while True:
+        lists.sort(key=lambda L: L["cur"])
+        acc = 0.0
+        p = 0
+        while p < len(lists):
+            acc += lists[p]["ub"]
+            p += 1
+            if acc >= threshold:
+                break
+        if acc < threshold:
+            break  # even all bounds combined cannot reach the k-th best
+        pivot = lists[p - 1]["cur"]
+        if lists[0]["cur"] == pivot:
+            # every list up to the pivot is AT pivot: full evaluation
+            dl = iget(schema.ptermdlen, (str(pivot),)) or avgdl
+            score = 0.0
+            i = 0
+            while i < len(lists) and lists[i]["cur"] == pivot:
+                L = lists[i]
+                tf = iget(L["g"], (L["key"], str(pivot)))
+                if tf:
+                    denom = tf + K1 * (1.0 - B + B * dl / avgdl)
+                    score += L["w"] * L["idf"] * (tf * (K1 + 1.0)) / denom
+                i += 1
+            if len(heap) < limit:
+                heapq.heappush(heap, (score, pivot))
+                if len(heap) == limit:
+                    threshold = heap[0][0]
+            elif score > threshold:
+                heapq.heapreplace(heap, (score, pivot))
+                threshold = heap[0][0]
+            # advance past the evaluated doc (exclusive)
+            i = 0
+            while i < len(lists) and lists[i]["cur"] == pivot:
+                lists[i]["cur"] = seek_gt(lists[i]["g"], lists[i]["key"], pivot)
+                i += 1
+            lists[:] = [L for L in lists if L["cur"] is not None]
+            if not lists:
+                break
+        else:
+            # seek all lists strictly below the pivot up to it (INCLUSIVE
+            # nextGE -- a list below the pivot may still contain the pivot)
+            moved = False
+            alive = []
+            for L in lists:
+                if L["cur"] < pivot:
+                    L["cur"] = seek_ge(L["g"], L["key"], pivot)
+                    moved = True
+                if L["cur"] is not None:
+                    alive.append(L)
+            lists[:] = alive
+            if not lists or not moved:
+                break
+
+    ranked = sorted(((str(pmid), score) for score, pmid in heap),
+                    key=lambda kv: (-kv[1], kv[0]))
+    return ranked[:limit]
+
+
+def bm25_search(
+    query: str,
+    schema: Schema = DEFAULT,
+    limit: int = 20,
+) -> list[tuple[str, float]]:
+    """BM25 top-k (WAND-pruned; falls back to the full scan on error)."""
+    try:
+        return bm25_search_wand(query, schema=schema, limit=limit)
+    except Exception:
+        return _bm25_scan_search(query, schema=schema, limit=limit)
+
+
 def search(terms: list[str], schema: Schema = DEFAULT, limit: int = 200) -> list[str]:
     """AND intersection of unigram postings (legacy API)."""
     import yottadb
@@ -264,6 +461,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     s = sub.add_parser("search")
     s.add_argument("terms", nargs="+")
     s.add_argument("--limit", type=int, default=20)
+    s.add_argument("--scan", action="store_true")
     args = ap.parse_args(argv)
     if args.cmd == "build":
         pmids = None
@@ -272,7 +470,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         build(limit=args.limit, pmids=pmids, batch=args.batch)
     else:
         query = " ".join(args.terms)
-        ranked = bm25_search(query, limit=args.limit)
+        if args.scan:
+            ranked = _bm25_scan_search(query, limit=args.limit)
+        else:
+            ranked = bm25_search(query, limit=args.limit)
         if not ranked:
             for pmid in search(args.terms, limit=args.limit):
                 import yottadb

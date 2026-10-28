@@ -11,7 +11,7 @@ Endpoints (JSON):
   GET  /health -> {"status":"ok"}
 
 Usage (U01):
-  source $HOME/ydb-py/.venv/bin/activate
+  source /home/mark/ydb-py/.venv/bin/activate
   source /usr/local/etc/ydb_env_set
   python3 mcp_server.py
 """
@@ -40,7 +40,7 @@ def mesh_search(query: str, limit: int = 10) -> dict:
     q = (query or "").strip()
     if len(q) < MIN_QUERY or len(q) > MAX_QUERY:
         return {"error": "query length 2..64"}
-    limit = max(1, min(int(limit or 10), MAX_RESULTS))
+    limit = 10 if limit is None else max(1, min(int(limit), MAX_RESULTS))
     needle = q.casefold()
     hits = []
     truncated = False
@@ -79,6 +79,7 @@ def mesh_get(ui: str) -> dict:
     ui = (ui or "").strip()
     if not UI_RE.match(ui):
         return {"error": "bad ui"}
+    ui = ui.upper()  # UI_RE is case-insensitive; ^MESH stores uppercase UIs
     try:
         name_b = yottadb.get(MESH, (ui,))
     except Exception:
@@ -135,7 +136,8 @@ def rpc(req: dict) -> dict:
         args = params.get("arguments") or {}
         try:
             if name == "mesh_search":
-                out = mesh_search(args.get("query", ""), int(args.get("limit") or 10))
+                lim = args.get("limit")
+                out = mesh_search(args.get("query", ""), int(lim if lim is not None else 10))
             elif name == "mesh_get":
                 out = mesh_get(args.get("ui", ""))
             else:

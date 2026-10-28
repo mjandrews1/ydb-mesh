@@ -2,8 +2,8 @@
 """Full author-pass over PubMed baseline (ydb-mesh#3 / optional follow-up).
 
 Usage:
-  python3 tools/author_pass.py [--glob "$HOME/_data/pubmed-baseline/*.xml.gz"]
-  python3 tools/author_pass.py --marc "$HOME/_data/nlm-staging/catplus-marcxml/*.xml.gz"
+  python3 tools/author_pass.py [--glob '/home/mark/_data/pubmed-baseline/*.xml.gz']
+  python3 tools/author_pass.py --marc /home/mark/_data/nlm-staging/catplus-marcxml/*.xml.gz
 """
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ import os
 import sys
 import time
 
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
+sys.path.insert(0, "/home/mark/ydb-mesh")
 from ydb_mesh.author_loader import load_marc_authors, load_pubmed_authors  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--glob", default=os.environ.get("PUBMED_GLOB", os.path.expanduser("~/_data/pubmed-baseline/*.xml.gz")))
+    ap.add_argument("--glob", default="/home/mark/_data/pubmed-baseline/*.xml.gz")
     ap.add_argument("--marc", default=None, help="MARC xml.gz glob (catline)")
     ap.add_argument("--kind", default="catline", choices=("catline", "serline"))
     args = ap.parse_args()

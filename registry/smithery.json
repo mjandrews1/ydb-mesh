@@ -1,0 +1,14 @@
+{
+  "name": "meshgraph-mcp",
+  "displayName": "MeshGraph MeSH search",
+  "description": "Substring MeSH descriptor search over a YottaDB citation index. Read-only HTTP MCP server (mesh_search, mesh_get) at https://home.flamingyak.com/mcp — self-hosted, no auth.",
+  "version": "0.1.0",
+  "remote": {
+    "transport": "http",
+    "url": "https://home.flamingyak.com/mcp",
+    "auth": "none"
+  },
+  "tags": ["mesh", "pubmed", "biomedical", "search", "yottadb", "read-only"],
+  "repository": "https://github.com/mjandrews1/ydb-mesh",
+  "website": "https://home.flamingyak.com"
+}

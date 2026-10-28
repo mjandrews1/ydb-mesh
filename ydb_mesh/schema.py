@@ -42,6 +42,7 @@ class Schema:
     ptermdf: str = "^PTERMDF"
     ptermdlen: str = "^PTERMDLEN"
     ptermphrase: str = "^PTERMPHRASE"
+    ptermphrasedf: str = "^PTERMPHRASEDF"
     preprint: str = "^PREPRINT"
     preprintstat: str = "^PREPRINTSTAT"
 

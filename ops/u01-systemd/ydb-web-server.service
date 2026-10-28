@@ -1,0 +1,23 @@
+[Unit]
+Description=YottaDB Web Server
+After=network.target
+Documentation=https://docs.yottadb.com/Plugins/ydbwebserver.html
+
+[Service]
+Type=exec
+User=mark
+Group=mark
+Environment=YDB_WEB_PORT=9080
+Environment=YDB_WEB_DOCROOT=/var/ydb/web
+ExecStart=/usr/local/bin/ydb-web-server start
+ExecStop=/usr/local/bin/ydb-web-server stop
+Restart=on-failure
+RestartSec=3
+# MUPIP STOP = SIGTERM = 256-15 = 241; treat as clean shutdown
+SuccessExitStatus=241
+StandardOutput=append:/var/log/ydb-web-server.log
+StandardError=append:/var/log/ydb-web-server.log
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
