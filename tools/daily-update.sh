@@ -58,13 +58,29 @@ fi
 mv "$tmp_want" "$DATA/pubmed-updates-want.txt"
 log "WANT $want_n pmids in $nfiles updatefiles"
 
-# --- 3. load missing (skips PMIDs already in ^PUBMED); abort on failure ---
-"$PY" tools/load_updates_missing.py \
-    --missing "$DATA/pubmed-updates-want.txt" \
-    --xml-glob "$UPD/*.xml.gz" >> "$LOG" 2>&1
-lrc=$?
-log "LOAD_DONE rc=$lrc"
-[ "$lrc" -ne 0 ] && { log "ABORT: load failed — skipping PTERM catch-up (phantom guard)"; exit 1; }
+# --- 2b. filter want to PMIDs actually missing from ^PUBMED (fail-loud) ---
+# The want extraction includes cited-not-published PMIDs (CommentsCorrections/
+# ReferenceList). Loading against the full want list re-writes present articles
+# every run and re-bumps ^PUBMEDSTAT counters; the filter keeps only genuinely
+# absent PMIDs so the loader writes only new articles.
+"$PY" tools/filter_want_missing.py \
+    "$DATA/pubmed-updates-want.txt" "$DATA/pubmed-updates-missing.txt" >> "$LOG" 2>&1
+frc=$?
+[ "$frc" -ne 0 ] && { log "ABORT: want filter failed rc=$frc"; exit 1; }
+miss_n=$(wc -l < "$DATA/pubmed-updates-missing.txt")
+log "MISSING_FILTER want=$want_n missing=$miss_n present=$((want_n - miss_n))"
+
+# --- 3. load missing only (filtered); abort on failure ---
+if [ "$miss_n" -eq 0 ]; then
+    log "LOAD_SKIPPED (all wanted PMIDs already present)"
+else
+    "$PY" tools/load_updates_missing.py \
+        --missing "$DATA/pubmed-updates-missing.txt" \
+        --xml-glob "$UPD/*.xml.gz" >> "$LOG" 2>&1
+    lrc=$?
+    log "LOAD_DONE rc=$lrc"
+    [ "$lrc" -ne 0 ] && { log "ABORT: load failed — skipping PTERM catch-up (phantom guard)"; exit 1; }
+fi
 
 # --- 4. BM25/PTERM catch-up for LOADED docs not yet indexed ---
 if pgrep -f "ydb_mesh.term_index build" >/dev/null 2>&1; then
