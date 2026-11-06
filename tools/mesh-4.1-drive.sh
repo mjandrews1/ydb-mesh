@@ -16,6 +16,18 @@ st()  { printf '%s\n' "$1" >"$STATUS"; say "STATUS: $1"; }
 st "STARTED"
 say "4.1 drive start"
 
+# gate: the U02 coldstore copy must be settled (1.3 refresh DONE-OK) before we
+# open it read-only — opening it mid-rsync segfaulted YDB (signal 11).
+for i in $(seq 1 80); do
+  S=$(ssh -o BatchMode=yes -o ConnectTimeout=10 $U02 'cat ~/coldstore/refresh-1.3.status 2>/dev/null' 2>/dev/null)
+  [ "$S" = "DONE-OK" ] && break
+  [ "$S" = "DONE-MISMATCH" ] && { st "FAILED: 1.3 refresh mismatched — not exporting from an unverified copy"; exit 1; }
+  st "WAITING-FOR-1.3 ($i) — U02 coldstore copy still syncing (status=${S:-none})"
+  sleep 30
+done
+[ "${S:-}" = "DONE-OK" ] || { st "FAILED: 1.3 never reached DONE-OK"; exit 1; }
+say "1.3 DONE-OK confirmed; proceeding"
+
 # --- Phase E: export on U02 (read-only view of the coldstore backup) ---
 st "EXPORT-U02"
 ssh -o BatchMode=yes -o ConnectTimeout=20 $U02 bash -s "$GL" <<'REMOTE' >>"$LOG" 2>&1
@@ -27,7 +39,6 @@ mkdir -p ~/scratch-restore/g
 cp ~/ydb-replica/g/scaleout.gld ~/scratch-restore/g/restore.gld
 sed -i "s|ydb-replica/g/scaleout|scratch-restore/restore0000000|g" ~/scratch-restore/g/restore.gld
 ln -sf ~/coldstore/meshgraph-backup/yottadb.dat ~/scratch-restore/restore0000000.dat
-ln -sf ~/coldstore/meshgraph-backup/yottadb.mjl ~/scratch-restore/restore0000000.mjl 2>/dev/null || true
 export ydb_gbldir=/home/mark/scratch-restore/g/restore.gld
 export ydb_routines="/home/mark/ydb-mesh/tools $ydb_dist"
 # sanity: backup readable?
