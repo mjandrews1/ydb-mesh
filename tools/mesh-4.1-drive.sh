@@ -37,8 +37,10 @@ export ydb_dist=/usr/local/lib/yottadb/r206
 # scratch gld view pointing at the coldstore backup dat (read-only use)
 mkdir -p ~/scratch-restore/g
 cp ~/ydb-replica/g/scaleout.gld ~/scratch-restore/g/restore.gld
-sed -i "s|ydb-replica/g/scaleout|scratch-restore/restore0000000|g" ~/scratch-restore/g/restore.gld
-ln -sf ~/coldstore/meshgraph-backup/yottadb.dat ~/scratch-restore/restore0000000.dat
+# gld is binary with fixed offsets: replacement string MUST be same length
+# "ydb-replica/g/scaleout" (22) -> "scratch-restore/abcdef" (22)
+sed -i "s|ydb-replica/g/scaleout|scratch-restore/abcdef|g" ~/scratch-restore/g/restore.gld
+ln -sf ~/coldstore/meshgraph-backup/yottadb.dat ~/scratch-restore/abcdef.dat
 export ydb_gbldir=/home/mark/scratch-restore/g/restore.gld
 export ydb_routines="/home/mark/ydb-mesh/tools $ydb_dist"
 # sanity: backup readable?
